@@ -287,10 +287,50 @@ resource "btp_subaccount_role_collection_assignment" "integration_suite" {
   depends_on           = [btp_subaccount_subscription.integration_suite]
 }
 
-/* resource "btp_subaccount_role_collection_assignment" "ai_launchpad" {
+resource "btp_subaccount_role_collection_assignment" "ailaunchpad_genai_manager" {
   subaccount_id        = btp_subaccount.pbc_workshop.id
-  role_collection_name = "Integration_Provisioner"
+  role_collection_name = "ailaunchpad_genai_manager"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.integration_suite]
-} */
+  depends_on           = [btp_subaccount_subscription.ai_launchpad]
+}
+
+resource "btp_subaccount_role_collection_assignment" "ailaunchpad_allow_all_resourcegroups" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "ailaunchpad_allow_all_resourcegroups"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+  depends_on           = [btp_subaccount_subscription.ai_launchpad]
+}
+
+resource "btp_subaccount_role_collection_assignment" "ailaunchpad_connections_editor" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "ailaunchpad_connections_editor"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+  depends_on           = [btp_subaccount_subscription.ai_launchpad]
+}
+
+resource "btp_subaccount_role_collection_assignment" "ailaunchpad_mloperations_editor" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "ailaunchpad_mloperations_editor"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+  depends_on           = [btp_subaccount_subscription.ai_launchpad]
+}
+
+resource "btp_subaccount_role_collection_assignment" "ailaunchpad_aicore_admin_editor" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "ailaunchpad_aicore_admin_editor"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+  depends_on           = [btp_subaccount_subscription.ai_launchpad]
+}
+
+resource "btp_subaccount_role_collection_assignment" "ailaunchpad_functions_explorer_editor_v2" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "ailaunchpad_functions_explorer_editor_v2"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+  depends_on           = [btp_subaccount_subscription.ai_launchpad]
+}
