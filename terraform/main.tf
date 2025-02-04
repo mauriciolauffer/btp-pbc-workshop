@@ -33,7 +33,7 @@ resource "btp_subaccount_entitlement" "bas" {
 
 resource "btp_subaccount_entitlement" "build_workzone_standard" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  service_name  = "build-workzone-standard"
+  service_name  = "SAPLaunchpad"
   plan_name     = "standard"
 }
 
@@ -53,12 +53,14 @@ resource "btp_subaccount_entitlement" "integration_suite" {
   subaccount_id = btp_subaccount.pbc_workshop.id
   service_name  = "integrationsuite"
   plan_name     = "standard_edition"
+  amount = 1
 }
 
 resource "btp_subaccount_entitlement" "event_mesh_message_client" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  service_name  = "hana-event-mesh-message-client"
+  service_name  = "event-mesh-message-client"
   plan_name     = "message-client"
+  amount = 1
 }
 
 resource "btp_subaccount_entitlement" "destination" {
@@ -95,45 +97,39 @@ resource "btp_subaccount_environment_instance" "cloudfoundry" {
   })
 }
 
-
 ##########
 ### Services Subscriptions
 ##########
 resource "btp_subaccount_subscription" "integration_suite" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  app_name      = "integrationsuite"
+  app_name      = btp_subaccount_entitlement.integration_suite.service_name
   plan_name     = btp_subaccount_entitlement.integration_suite.plan_name
-  depends_on    = [btp_subaccount_entitlement.integration_suite]
 }
 
 resource "btp_subaccount_subscription" "ai_launchpad" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  app_name      = "ai-launchpad"
+  app_name      = btp_subaccount_entitlement.ai_launchpad.service_name
   plan_name     = btp_subaccount_entitlement.ai_launchpad.plan_name
-  depends_on    = [btp_subaccount_entitlement.ai_launchpad]
 }
 
 resource "btp_subaccount_subscription" "build_workzone_standard" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  app_name      = "build-workzone-standard"
+  app_name      = btp_subaccount_entitlement.build_workzone_standard.service_name
   plan_name     = btp_subaccount_entitlement.build_workzone_standard.plan_name
-  depends_on    = [btp_subaccount_entitlement.build_workzone_standard]
 }
 
 # Create app subscription to SAP Build Apps (depends on entitlement)
 resource "btp_subaccount_subscription" "bas" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  app_name      = "sapappstudio"
+  app_name      = btp_subaccount_entitlement.bas.service_name
   plan_name     = btp_subaccount_entitlement.bas.plan_name
-  depends_on    = [btp_subaccount_entitlement.bas]
 }
 
  # Create app subscription to SAP HANA Cloud Tools
 resource "btp_subaccount_subscription" "hana_cloud_tools" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  app_name      = "hana-cloud-tools"
-  plan_name     = "tools"
-  depends_on    = [btp_subaccount_entitlement.hana_cloud_tools]
+  app_name      = btp_subaccount_entitlement.hana_cloud_tools.service_name
+  plan_name     = btp_subaccount_entitlement.hana_cloud_tools.plan_name
 }
 
 ##########
@@ -144,33 +140,57 @@ resource "btp_subaccount_subscription" "hana_cloud_tools" {
 # Get plan for SAP AI Core service
 data "btp_subaccount_service_plan" "ai_core" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  offering_name = "aicore"
-  name          = "extended"
-  depends_on    = [btp_subaccount_entitlement.ai_core]
+  offering_name = btp_subaccount_entitlement.ai_core.service_name
+  name          = btp_subaccount_entitlement.ai_core.plan_name
 }
 
 # Create service instance for SAP AI Core service
 resource "btp_subaccount_service_instance" "ai_core" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
   serviceplan_id = data.btp_subaccount_service_plan.ai_core.id
-  name           = "my-ai-core-instance"
-  depends_on     = [btp_subaccount_entitlement.ai_core]
+  name           = "pbc-ai-core"
 }
 
 # Create service binding to SAP AI Core service (exposed for a specific user group)
 resource "btp_subaccount_service_binding" "ai_core_binding" {
   subaccount_id       = btp_subaccount.pbc_workshop.id
   service_instance_id = btp_subaccount_service_instance.ai_core.id
-  name                = "ai-core-key"
+  name                = "pbc-ai-core-key"
 }
+
+### SAP Integration Suite, Event Mesh ###
+# Get plan for SAP Integration Suite, Event Mesh
+data "btp_subaccount_service_plan" "event_mesh_message_client" {
+  subaccount_id = btp_subaccount.pbc_workshop.id
+  offering_name = btp_subaccount_entitlement.event_mesh_message_client.service_name
+  name          = btp_subaccount_entitlement.event_mesh_message_client.plan_name  
+}
+
+/* # Create service instance for SAP Integration Suite, Event Mesh service
+resource "btp_subaccount_service_instance" "event_mesh_message_client" {
+  subaccount_id  = btp_subaccount.pbc_workshop.id
+  serviceplan_id = data.btp_subaccount_service_plan.event_mesh_message_client.id
+  name           = "pbc-is-evt-mesh"
+  // parameters = jsonencode({
+  //  "environment": "cloudfoundry",
+  //  "spaceId": "605eaa7c-1f65-4118-843a-40fdb89e943d",
+  //})
+}
+
+# Create service binding to SAP AI Core service (exposed for a specific user group)
+resource "btp_subaccount_service_binding" "event_mesh_message_client_binding" {
+  subaccount_id       = btp_subaccount.pbc_workshop.id
+  service_instance_id = btp_subaccount_service_instance.event_mesh_message_client.id
+  name                = "pbc-is-evt-mesh-key"
+} */
+
 
 ### Setup Destination ###
 # Get plan for destination service
 data "btp_subaccount_service_plan" "destination" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  offering_name = "destination"
-  name          = "lite"
-  depends_on    = [btp_subaccount_entitlement.destination]
+  offering_name = btp_subaccount_entitlement.destination.service_name
+  name          = btp_subaccount_entitlement.destination.plan_name
 }
 
 # Create service instance
@@ -178,7 +198,7 @@ resource "btp_subaccount_service_instance" "destination" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
   serviceplan_id = data.btp_subaccount_service_plan.destination.id
   name           = "destination"
-  depends_on     = [btp_subaccount_service_binding.ai_core_binding, data.btp_subaccount_service_plan.destination]
+  depends_on     = [btp_subaccount_service_binding.ai_core_binding]
   parameters = jsonencode({
     HTML5Runtime_enabled = true
     init_data = {
@@ -210,9 +230,8 @@ resource "btp_subaccount_service_instance" "destination" {
 # Get plan for SAP HANA Cloud
 data "btp_subaccount_service_plan" "hana_cloud" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  offering_name = "hana-cloud"
-  name          = "hana"
-  depends_on    = [btp_subaccount_entitlement.hana_cloud]
+  offering_name = btp_subaccount_entitlement.hana_cloud.service_name
+  name          = btp_subaccount_entitlement.hana_cloud.plan_name
 }
 
 # Create service instance
@@ -220,7 +239,6 @@ resource "btp_subaccount_service_instance" "hana_cloud" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
   serviceplan_id = data.btp_subaccount_service_plan.hana_cloud.id
   name           = "my-hana-cloud-instance"
-  depends_on     = [btp_subaccount_entitlement.hana_cloud]
   parameters = jsonencode(
     {
       "data" : {
@@ -285,13 +303,21 @@ resource "btp_subaccount_role_collection_assignment" "bas_admin" {
   depends_on           = [btp_subaccount_subscription.bas]
 }
 
-resource "btp_subaccount_role_collection_assignment" "integration_suite" {
+resource "btp_subaccount_role_collection_assignment" "integration_suite_admin" {
   subaccount_id        = btp_subaccount.pbc_workshop.id
   role_collection_name = "Integration_Provisioner"
   for_each             = toset(var.admins)
   user_name            = each.value
   depends_on           = [btp_subaccount_subscription.integration_suite]
 }
+
+/* resource "btp_subaccount_role_collection_assignment" "event_mesh_admin" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "EventMeshAdmin"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+  depends_on           = [btp_subaccount_service_instance.event_mesh_message_client]
+} */
 
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_genai_manager" {
   subaccount_id        = btp_subaccount.pbc_workshop.id
