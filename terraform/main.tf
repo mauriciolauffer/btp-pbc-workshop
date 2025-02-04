@@ -55,6 +55,12 @@ resource "btp_subaccount_entitlement" "integration_suite" {
   plan_name     = "standard_edition"
 }
 
+resource "btp_subaccount_entitlement" "event_mesh_message_client" {
+  subaccount_id = btp_subaccount.pbc_workshop.id
+  service_name  = "hana-event-mesh-message-client"
+  plan_name     = "message-client"
+}
+
 resource "btp_subaccount_entitlement" "destination" {
   subaccount_id = btp_subaccount.pbc_workshop.id
   service_name  = "destination"
