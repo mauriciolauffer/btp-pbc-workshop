@@ -1,13 +1,15 @@
 ##########
 ### Local setup
 ##########
-resource "random_id" "gen" {
-  byte_length = 8
-  prefix = "pbc-"
+resource "random_string" "gen" {
+  length  = 20
+  lower   = true
+  upper   = false
+  special = false
 }
 
 locals {
-  subaccount_domain = substr(lower(random_id.gen.b64_url), 0, 32)
+  subaccount_domain = random_string.gen.result
   subaccount_cf_org = local.subaccount_domain
 }
 
@@ -25,6 +27,13 @@ resource "btp_subaccount" "pbc_workshop" {
 ##########
 ### Entitlements
 ##########
+resource "btp_subaccount_entitlement" "cloud_foundry_quota" {
+  subaccount_id = btp_subaccount.pbc_workshop.id
+  service_name  = "APPLICATION_RUNTIME"
+  plan_name     = "MEMORY"
+  amount        = 1
+}
+
 resource "btp_subaccount_entitlement" "bas" {
   subaccount_id = btp_subaccount.pbc_workshop.id
   service_name  = "sapappstudio"
@@ -53,14 +62,14 @@ resource "btp_subaccount_entitlement" "integration_suite" {
   subaccount_id = btp_subaccount.pbc_workshop.id
   service_name  = "integrationsuite"
   plan_name     = "standard_edition"
-  amount = 1
+  amount        = 1
 }
 
-resource "btp_subaccount_entitlement" "event_mesh_message_client" {
+resource "btp_subaccount_entitlement" "event_mesh_client" {
   subaccount_id = btp_subaccount.pbc_workshop.id
   service_name  = "event-mesh-message-client"
   plan_name     = "message-client"
-  amount = 1
+  amount        = 1
 }
 
 resource "btp_subaccount_entitlement" "destination" {
@@ -81,6 +90,12 @@ resource "btp_subaccount_entitlement" "hana_cloud" {
   plan_name     = "hana"
 }
 
+resource "btp_subaccount_entitlement" "hana_hdi_shared" {
+  subaccount_id = btp_subaccount.pbc_workshop.id
+  service_name  = "hana"
+  plan_name     = "hdi-shared"
+}
+
 
 ##########
 ### Environment
@@ -96,6 +111,12 @@ resource "btp_subaccount_environment_instance" "cloudfoundry" {
     instance_name = local.subaccount_cf_org
   })
 }
+
+resource "cloudfoundry_space" "cf_space" {
+  org  = btp_subaccount_environment_instance.cloudfoundry.platform_id
+  name = var.cf_space_name
+}
+
 
 ##########
 ### Services Subscriptions
@@ -125,12 +146,13 @@ resource "btp_subaccount_subscription" "bas" {
   plan_name     = btp_subaccount_entitlement.bas.plan_name
 }
 
- # Create app subscription to SAP HANA Cloud Tools
+# Create app subscription to SAP HANA Cloud Tools
 resource "btp_subaccount_subscription" "hana_cloud_tools" {
   subaccount_id = btp_subaccount.pbc_workshop.id
   app_name      = btp_subaccount_entitlement.hana_cloud_tools.service_name
   plan_name     = btp_subaccount_entitlement.hana_cloud_tools.plan_name
 }
+
 
 ##########
 ### Services Instances
@@ -144,46 +166,41 @@ data "btp_subaccount_service_plan" "ai_core" {
   name          = btp_subaccount_entitlement.ai_core.plan_name
 }
 
-# Create service instance for SAP AI Core service
+# Create service instance for SAP AI Core
 resource "btp_subaccount_service_instance" "ai_core" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
   serviceplan_id = data.btp_subaccount_service_plan.ai_core.id
   name           = "pbc-ai-core"
 }
 
-# Create service binding to SAP AI Core service (exposed for a specific user group)
+# Create service binding to SAP AI Core (exposed for a specific user group)
 resource "btp_subaccount_service_binding" "ai_core_binding" {
   subaccount_id       = btp_subaccount.pbc_workshop.id
   service_instance_id = btp_subaccount_service_instance.ai_core.id
   name                = "pbc-ai-core-key"
 }
 
-### SAP Integration Suite, Event Mesh ###
+/* ### SAP Integration Suite, Event Mesh ###
 # Get plan for SAP Integration Suite, Event Mesh
-data "btp_subaccount_service_plan" "event_mesh_message_client" {
+data "btp_subaccount_service_plan" "event_mesh_client" {
   subaccount_id = btp_subaccount.pbc_workshop.id
-  offering_name = btp_subaccount_entitlement.event_mesh_message_client.service_name
-  name          = btp_subaccount_entitlement.event_mesh_message_client.plan_name  
+  offering_name = btp_subaccount_entitlement.event_mesh_client.service_name
+  name          = btp_subaccount_entitlement.event_mesh_client.plan_name
 }
 
-/* # Create service instance for SAP Integration Suite, Event Mesh service
-resource "btp_subaccount_service_instance" "event_mesh_message_client" {
+# Create service instance for SAP Integration Suite, Event Mesh
+resource "btp_subaccount_service_instance" "event_mesh_client" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
-  serviceplan_id = data.btp_subaccount_service_plan.event_mesh_message_client.id
+  serviceplan_id = data.btp_subaccount_service_plan.event_mesh_client.id
   name           = "pbc-is-evt-mesh"
-  // parameters = jsonencode({
-  //  "environment": "cloudfoundry",
-  //  "spaceId": "605eaa7c-1f65-4118-843a-40fdb89e943d",
-  //})
 }
 
-# Create service binding to SAP AI Core service (exposed for a specific user group)
-resource "btp_subaccount_service_binding" "event_mesh_message_client_binding" {
+# Create service binding to SAP Integration Suite, Event Mesh (exposed for a specific user group)
+resource "btp_subaccount_service_binding" "event_mesh_client_binding" {
   subaccount_id       = btp_subaccount.pbc_workshop.id
-  service_instance_id = btp_subaccount_service_instance.event_mesh_message_client.id
+  service_instance_id = btp_subaccount_service_instance.event_mesh_client.id
   name                = "pbc-is-evt-mesh-key"
 } */
-
 
 ### Setup Destination ###
 # Get plan for destination service
@@ -193,7 +210,7 @@ data "btp_subaccount_service_plan" "destination" {
   name          = btp_subaccount_entitlement.destination.plan_name
 }
 
-# Create service instance
+# Create service instance for Destination
 resource "btp_subaccount_service_instance" "destination" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
   serviceplan_id = data.btp_subaccount_service_plan.destination.id
@@ -234,33 +251,41 @@ data "btp_subaccount_service_plan" "hana_cloud" {
   name          = btp_subaccount_entitlement.hana_cloud.plan_name
 }
 
-# Create service instance
+# Create service instance for HANA Cloud
 resource "btp_subaccount_service_instance" "hana_cloud" {
   subaccount_id  = btp_subaccount.pbc_workshop.id
   serviceplan_id = data.btp_subaccount_service_plan.hana_cloud.id
-  name           = "my-hana-cloud-instance"
-  parameters = jsonencode(
-    {
-      "data" : {
-        "memory" : 32,
-        "edition" : "cloud",
-        "systempassword" : "${var.hana_system_password}",
-        "additionalWorkers" : 0,
-        "disasterRecoveryMode" : "no_disaster_recovery",
-        "enabledservices" : {
-          "docstore" : false,
-          "dpserver" : true,
-          "scriptserver" : false
-        },
-        "requestedOperation" : {},
-        "serviceStopped" : false,
-        "slaLevel" : "standard",
-        "storage" : 120,
-        "vcpu" : 2,
-        "whitelistIPs" : ["0.0.0.0/0"]
-      }
+  name           = "pbc-hana-cloud"
+  parameters = jsonencode({
+    "data" : {
+      "memory" : 32,
+      "storage" : 120,
+      "vcpu" : 2,
+      "additionalWorkers" : 0,
+      "systempassword" : "${var.hana_system_password}",
+      "edition" : "cloud",
+      "disasterRecoveryMode" : "no_disaster_recovery",
+      "enabledservices" : {
+        "scriptserver" : false,
+        "docstore" : false,
+        "dpserver" : false,
+        "pal" : false,
+        "nlp" : false
+      },
+      "slaLevel" : "standard",
+      "allow_all" : false,
+      "whitelistIPs" : [],
+      "databaseMappings" : [{
+        "platform" : "cloudfoundry",
+        "organization_guid" : "${btp_subaccount_environment_instance.cloudfoundry.platform_id}",
+        "space_guid" : "${cloudfoundry_space.cf_space.id}"
+      }]
+    }
   })
-
+  depends_on = [
+    cloudfoundry_space_role.cf_space_manager,
+    btp_subaccount_role_collection_assignment.hana_cloud_admin
+  ]
   timeouts = {
     create = "45m"
     update = "45m"
@@ -268,101 +293,134 @@ resource "btp_subaccount_service_instance" "hana_cloud" {
   }
 }
 
-# Create service binding to SAP HANA Cloud service 
+# Create service binding to SAP HANA Cloud
 resource "btp_subaccount_service_binding" "hana_cloud" {
   subaccount_id       = btp_subaccount.pbc_workshop.id
   service_instance_id = btp_subaccount_service_instance.hana_cloud.id
-  name                = "hana-cloud-key"
+  name                = "pbc-hana-cloud-key"
 }
 
 
 ##########
 ### Roles
 ##########
-resource "btp_subaccount_role_collection_assignment" "hana_cloud_admin" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
-  role_collection_name = "SAP HANA Cloud Administrator"
-  user_name            = each.value
-  for_each             = toset(var.admins)
-  depends_on           = [btp_subaccount_subscription.hana_cloud_tools]
+resource "cloudfoundry_space_role" "cf_space_manager" {
+  space    = cloudfoundry_space.cf_space.id
+  origin   = var.cf_user_origin
+  type     = "space_manager"
+  for_each = toset(var.admins)
+  username = each.value
 }
 
-resource "btp_subaccount_role_collection_assignment" "bas_dev" {
+resource "cloudfoundry_space_role" "cf_space_developer" {
+  space    = cloudfoundry_space.cf_space.id
+  origin   = var.cf_user_origin
+  type     = "space_developer"
+  for_each = toset(var.developers)
+  username = each.value
+}
+
+resource "btp_subaccount_role_collection_assignment" "subaccount_admin" {
   subaccount_id        = btp_subaccount.pbc_workshop.id
-  role_collection_name = "Business_Application_Studio_Developer"
+  role_collection_name = "Subaccount Administrator"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+}
+
+resource "btp_subaccount_role_collection_assignment" "subaccount_viewer" {
+  subaccount_id        = btp_subaccount.pbc_workshop.id
+  role_collection_name = "Subaccount Viewer"
   for_each             = toset(var.developers)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.bas]
+}
+
+resource "btp_subaccount_role_collection_assignment" "hana_cloud_admin" {
+  subaccount_id        = btp_subaccount_subscription.hana_cloud_tools.subaccount_id
+  role_collection_name = "SAP HANA Cloud Administrator"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+}
+
+resource "btp_subaccount_role_collection_assignment" "build_workzone_standard_admin" {
+  subaccount_id        = btp_subaccount_subscription.build_workzone_standard.subaccount_id
+  role_collection_name = "Launchpad_Admin"
+  for_each             = toset(var.admins)
+  user_name            = each.value
 }
 
 resource "btp_subaccount_role_collection_assignment" "bas_admin" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.bas.subaccount_id
   role_collection_name = "Business_Application_Studio_Administrator"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.bas]
+}
+
+resource "btp_subaccount_role_collection_assignment" "bas_dev" {
+  subaccount_id        = btp_subaccount_subscription.bas.subaccount_id
+  role_collection_name = "Business_Application_Studio_Developer"
+  for_each             = toset(var.developers)
+  user_name            = each.value
 }
 
 resource "btp_subaccount_role_collection_assignment" "integration_suite_admin" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.integration_suite.subaccount_id
   role_collection_name = "Integration_Provisioner"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.integration_suite]
 }
 
-/* resource "btp_subaccount_role_collection_assignment" "event_mesh_admin" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
-  role_collection_name = "EventMeshAdmin"
-  for_each             = toset(var.admins)
-  user_name            = each.value
-  depends_on           = [btp_subaccount_service_instance.event_mesh_message_client]
-} */
-
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_genai_manager" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.ai_launchpad.subaccount_id
   role_collection_name = "ailaunchpad_genai_manager"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.ai_launchpad]
 }
 
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_allow_all_resourcegroups" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.ai_launchpad.subaccount_id
   role_collection_name = "ailaunchpad_allow_all_resourcegroups"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.ai_launchpad]
 }
 
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_connections_editor" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.ai_launchpad.subaccount_id
   role_collection_name = "ailaunchpad_connections_editor"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.ai_launchpad]
 }
 
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_mloperations_editor" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.ai_launchpad.subaccount_id
   role_collection_name = "ailaunchpad_mloperations_editor"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.ai_launchpad]
 }
 
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_aicore_admin_editor" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.ai_launchpad.subaccount_id
   role_collection_name = "ailaunchpad_aicore_admin_editor"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.ai_launchpad]
 }
 
 resource "btp_subaccount_role_collection_assignment" "ailaunchpad_functions_explorer_editor_v2" {
-  subaccount_id        = btp_subaccount.pbc_workshop.id
+  subaccount_id        = btp_subaccount_subscription.ai_launchpad.subaccount_id
   role_collection_name = "ailaunchpad_functions_explorer_editor_v2"
   for_each             = toset(var.admins)
   user_name            = each.value
-  depends_on           = [btp_subaccount_subscription.ai_launchpad]
 }
+
+/* resource "btp_subaccount_role_collection_assignment" "event_mesh_admin" {
+  subaccount_id        = btp_subaccount_service_instance.event_mesh_client.subaccount_id
+  role_collection_name = "EventMeshAdmin"
+  for_each             = toset(var.admins)
+  user_name            = each.value
+}
+
+resource "btp_subaccount_role_collection_assignment" "event_mesh_dev" {
+  subaccount_id        = btp_subaccount_service_instance.event_mesh_client.subaccount_id
+  role_collection_name = "EventMeshDeveloper"
+  for_each             = toset(var.developers)
+  user_name            = each.value
+} */

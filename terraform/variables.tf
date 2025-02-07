@@ -29,10 +29,30 @@ variable "region" {
   default     = "ap10"
 }
 
+/* variable "cf_access_token" {
+  type        = string
+  sensitive   = true
+  description = "OAuth token to authenticate with Cloud Foundry"
+  // default     = ""
+}
+
+variable "cf_refresh_token" {
+  type        = string
+  sensitive   = true
+  description = "Token to refresh the CF access token"
+  // default     = ""
+} */
+
 variable "cf_api_url" {
   type        = string
   description = "Cloud Foundry Environment API Endpoint"
   default     = "https://api.cf.ap10.hana.ondemand.com"
+}
+
+variable "cf_user_origin" {
+  type        = string
+  description = "The identity provider for the UAA user"
+  default     = "sap.ids"
 }
 
 variable "cf_space_name" {
@@ -44,19 +64,20 @@ variable "cf_space_name" {
 variable "admins" {
   type        = list(string)
   description = "Defines the colleagues who are added to the subaccount as administrators."
-  default     = []
+  // default     = []
 }
 
 variable "developers" {
   type        = list(string)
   description = "Defines the colleagues who are added to the subaccount as developers."
-  default     = []
+  // default     = []
 }
 
 variable "hana_system_password" {
   type        = string
   description = "The password of the database 'superuser' DBADMIN."
   sensitive   = true
+  // default     = ""
 
   # add validation to check if the password is at least 8 characters long
   validation {
