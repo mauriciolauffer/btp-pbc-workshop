@@ -28,8 +28,5 @@
 	"peerDependencies": {
 		"@ui5/cli": "^4",
 		"typescript": "^5"
-	},
-	"dependencies": {
-		"btp-cap-genai-rag": "file:../.."
 	}
 }
